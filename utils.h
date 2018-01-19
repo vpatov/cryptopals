@@ -5,7 +5,9 @@
 #include <string>
 #include <sstream>
 #include <cmath>
+#include <cstring>
 #include <limits>
+
 
 using byte = unsigned char;
 
