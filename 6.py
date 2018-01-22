@@ -2,6 +2,7 @@ import gmpy
 import array
 import base64
 from collections import Counter, defaultdict
+import threading
 
 f = open('last_question.txt','r')
 plaintext = f.read()
@@ -14,6 +15,18 @@ eng_freqs = {
 	'q':0.00095, 'r':0.05987, 's':0.06327, 't':0.09056, 'u':0.02758, 'v':0.00978, 'w':0.02360, 'x':0.00150, 
 	'y':0.01974, 'z':0.00074, ' ' : 0.20
 }
+
+
+counter = Counter(plaintext)
+for char in counter:
+	counter[char] /= len(plaintext)
+
+print(counter.most_common(10))
+tmp = list(eng_freqs.items())
+tmp.sort(reverse=True,key=lambda x: x[1])
+print(tmp)
+exit()
+
 
 def xor_encrypt(text,key):
 	output = []
@@ -63,14 +76,22 @@ def calc_freqs(data):
 	return {ord(char):count/len(data) for char,count in counts.items()}
 
 
-
+## TODOe
+# 1) try to decrypt only part of the main message, for efficiency's sake
+# 	try the first 2000 characters or so, hopefully you dont need more than that.
+# 2) Rewrite all the functions to deal with one type of data structure - byte arrays
+# 3) Decrypt the message using single-character XOR decryption, and after getting the 
+# most likely candidate for each position, take the key position that has been decrypted
+# with the highest degree of confidence, and then keeping that character constant, take its
+# less confident neighbor and try to decrypt as a pair
+# 4) Implement parallelization
 
 
 f = open('6.txt','r')
 base64_input = ''.join([line.strip() for line in f.readlines()])
 data = base64.b64decode(base64_input)
 
-password = "ABCDEFG".encode()
+password = "ABCDEFGH".encode()
 plaintext_bytes = plaintext.encode()
 data = array.array('B',xor(plaintext_bytes,password))
 
@@ -96,61 +117,63 @@ for keysize in range(2,40):
 keysizes.sort(key=lambda x: x[1])
 print(keysizes)
 
+def solve(_range):
+	keysize = len(password)
+	key = ''
+	min_key = None
+	min_mrse = float("inf")
+	min_char = None
+	for b1 in _range:
+		print(b1)
+		for b2 in range(0,256):
+			key = (b1,b2)
+			freqs = defaultdict(int)
+			count_sample = 0
+			for i in range(0,len(data),keysize):
+				sample = xor(data[i:i+len(key)],key)
+
+				for char in sample:
+					freqs[char] += 1
+				count_sample += len(sample)
+			for char in freqs:
+				freqs[char] /= count_sample
+
+			mrse = calc_mrse(freqs)
+			if (mrse < min_mrse):
+				min_mrse = mrse
+				min_key = key
+
+
+
+
 keysize = len(password)
 key = ''
 min_key = None
 min_mrse = float("inf")
-max_mrse = 0
-max_key = None
 min_char = None
-# for b1 in range(65,91):
-# 	print(b1)
-# 	for b2 in range(65,91):
-# 		key = (b1,b2)
-# 		freqs = defaultdict(int)
-# 		count_sample = 0
-# 		for i in range(0,len(data),keysize):
+for b1 in range(65,91):
+	print(b1)
+	for b2 in range(65,91):
+		key = (b1,b2)
+		freqs = defaultdict(int)
+		count_sample = 0
+		for i in range(0,len(data),keysize):
+			sample = xor(data[i:i+2],key)
 
-# 			sample = xor(data[i:i+2],key)
-# 			if (key[0] == ord('Q') and key[1] == ord('W')):
-# 				print(sample)
-# 			# print(sample, (i,i+2))
-# 			for char in sample:
-# 				freqs[char] += 1
-# 			count_sample += len(sample)
-# 		for char in freqs:
-# 			freqs[char] /= count_sample
+			for char in sample:
+				freqs[char] += 1
+			count_sample += len(sample)
+		for char in freqs:
+			freqs[char] /= count_sample
 
-# 		if (key[0] == ord('Q') and key[1] == ord('W')):
-# 			print(freqs)
-# 			print("SUM:", sum([val for key,val in freqs.items()]))
-# 		mrse = calc_mrse(freqs)
-# 		if (mrse < min_mrse):
-# 			min_mrse = mrse
-# 			min_key = key
-
-
-
-# print(chr(min_key[0]),chr(min_key[1]))		
-
-
-
-for i in range(0,len(data)//keysize,3):
-	print(i)
-	min_mrse = float("inf")
-	min_char = '!!!DEATH!!!'
-	for b in range(ord('A'),ord('Z')):
-		freqs = calc_freqs(''.join([chr(char ^ b) for char in data[i:len(data):keysize]]))
-
-		# print(freqs)
 		mrse = calc_mrse(freqs)
 		if (mrse < min_mrse):
 			min_mrse = mrse
-			min_char = b
+			min_key = key
+			# print(mrse,''.join([chr(k) for k in key]))
 
-		# print(b, chr(b), mrse)
-	# print()
-	key += chr(min_char)
+print(''.join([chr(k) for k in min_key]))
+print(min_key)
 
-print(key)
-print(xor(data,key))
+
+
