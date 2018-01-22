@@ -78,7 +78,7 @@ def calc_mrse(freqs):
 	for char in freqs:
 		pp = chr(char).lower()
 		if pp in eng_freqs:
-			_sum += (freqs[pp] - eng_freqs[pp])**2
+			_sum += (freqs[char] - eng_freqs[pp])**2
 			count_chars += 1
 	return float("inf") if count_chars == 0 else (_sum / count_chars)**0.5
 
@@ -86,7 +86,6 @@ def calc_freqs(data):
 	data = data.lower()
 	counts = Counter(data)
 	return {char:count/len(counts) for char,count in counts.items()}
-
 
 
 
@@ -153,16 +152,18 @@ keysize = 7
 key = ''
 min_key = None
 min_mrse = float("inf")
+max_mrse = 0
+max_key = None
 min_char = None
 for b1 in range(65,97):
 	print(b1)
 	for b2 in range(65,97):
 		key = (b1,b2)
 		freqs = defaultdict(int)
+
 		for i in range(0,len(data),keysize):
 			sample = xor(data[i:i+2],key)
-			print(key)
-			print(sample)
+			# print(sample, (i,i+2))
 			for char in sample:
 				freqs[char] += 1
 		for char in freqs:
@@ -173,7 +174,15 @@ for b1 in range(65,97):
 			min_mrse = mrse
 			min_key = key
 
-print(min_key)		
+		if (mrse > max_mrse):
+			max_mrse = mrse
+			max_key = key
+
+		print("Key: ", chr(key[0]) + chr(key[1]))
+		print(mrse)
+
+print(chr(min_key[0]),chr(min_key[1]))		
+print(chr(max_key[0]),chr(max_key[1]))
 
 
 
@@ -193,7 +202,3 @@ print(min_key)
 # 	print()
 # 	key += chr(min_char)
 
-print(key)
-print(len(key))
-
-		
